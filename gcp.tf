@@ -1,18 +1,20 @@
-# This file contains all the interactions with Google Cloud
+## This file contains all the interactions with Google Cloud
 provider "google" {
   region  = var.region
   project = var.project
+  credentials = file(var.terraform_service_account_credentials)
 }
 
 provider "google-beta" {
   region  = var.region
   project = var.project
+  credentials = file(var.terraform_service_account_credentials)
 }
 
 # Generate a random id for the project - GCP projects must have globally
 # unique names
 resource "random_id" "project_random" {
-  prefix      = "mainnet"
+  prefix      = var.project_prefix
   byte_length = "8"
 }
 
@@ -27,46 +29,33 @@ resource "google_project" "blockchain_cluster" {
 
 # Or use an existing project, if defined
 data "google_project" "blockchain_cluster" {
-  count      = var.project != "" ? 1 : 0
-  project_id = var.project
-}
-
-# Obtain the project_id from either the newly created project resource or
-# existing data project resource One will be populated and the other will be
-# null
-locals {
-  blockchain_cluster_project_id = element( concat(
-      data.google_project.blockchain_cluster.*.project_id,
-      google_project.blockchain_cluster.*.project_id,
-    ),
-    0,
-  )
+  project_id = var.project != "" ? var.project : google_project.blockchain_cluster[0].project_id
 }
 
 # Create the blockchain_cluster service account
-resource "google_service_account" "tezos-baker-server" {
-  account_id   = "tezos-baker-server"
+resource "google_service_account" "blockchain-server" {
+  account_id   = "blockchain-server"
   display_name = "blockchain_cluster Server"
-  project      = local.blockchain_cluster_project_id
+  project      = data.google_project.blockchain_cluster.project_id
 }
 
 # Create a service account key
 resource "google_service_account_key" "blockchain_cluster" {
-  service_account_id = google_service_account.tezos-baker-server.name
+  service_account_id = google_service_account.blockchain-server.name
 }
 
 # Add the service account to the project
 resource "google_project_iam_member" "service-account" {
   count   = length(var.service_account_iam_roles)
-  project = local.blockchain_cluster_project_id
+  project      = data.google_project.blockchain_cluster.project_id
   role    = element(var.service_account_iam_roles, count.index)
-  member  = "serviceAccount:${google_service_account.tezos-baker-server.email}"
+  member  = "serviceAccount:${google_service_account.blockchain-server.email}"
 }
 
 # Enable required services on the project
 resource "google_project_service" "service" {
   count   = length(var.project_services)
-  project = local.blockchain_cluster_project_id
+  project      = data.google_project.blockchain_cluster.project_id
   service = element(var.project_services, count.index)
 
   # Do not disable the service on destroy. On destroy, we are going to
@@ -76,100 +65,93 @@ resource "google_project_service" "service" {
 }
 
 # Create an external NAT IP
-resource "google_compute_address" "tezos-baker-nat" {
+resource "google_compute_address" "blockchain-nat" {
   count   = 2
-  name    = "tezos-baker-nat-external-${count.index}"
-  project = local.blockchain_cluster_project_id
+  name    = "blockchain-nat-external-${count.index}"
+  project      = data.google_project.blockchain_cluster.project_id
   region  = var.region
 
   depends_on = [google_project_service.service]
 }
 
 # Create a network for GKE
-resource "google_compute_network" "tezos-baker-network" {
-  name                    = "tezos-baker-network"
-  project                 = local.blockchain_cluster_project_id
+resource "google_compute_network" "blockchain-network" {
+  name                    = "blockchain-network"
+  project      = data.google_project.blockchain_cluster.project_id
   auto_create_subnetworks = false
 
   depends_on = [google_project_service.service]
 }
 
 # Create subnets
-resource "google_compute_subnetwork" "tezos-baker-subnetwork" {
-  name          = "tezos-baker-subnetwork"
-  project       = local.blockchain_cluster_project_id
-  network       = google_compute_network.tezos-baker-network.self_link
+resource "google_compute_subnetwork" "blockchain-subnetwork" {
+  name          = "blockchain-subnetwork"
+  project      = data.google_project.blockchain_cluster.project_id
+  network       = google_compute_network.blockchain-network.self_link
   region        = var.region
   ip_cidr_range = var.kubernetes_network_ipv4_cidr
 
   private_ip_google_access = true
 
   secondary_ip_range {
-    range_name    = "tezos-baker-pods"
+    range_name    = "blockchain-pods"
     ip_cidr_range = var.kubernetes_pods_ipv4_cidr
   }
 
   secondary_ip_range {
-    range_name    = "tezos-baker-svcs"
+    range_name    = "blockchain-svcs"
     ip_cidr_range = var.kubernetes_services_ipv4_cidr
   }
 }
 
 # Create a NAT router so the nodes can reach DockerHub, etc
-resource "google_compute_router" "tezos-baker-router" {
-  name    = "tezos-baker-router"
-  project = local.blockchain_cluster_project_id
+resource "google_compute_router" "blockchain-router" {
+  name    = "blockchain-router"
+  project      = data.google_project.blockchain_cluster.project_id
   region  = var.region
-  network = google_compute_network.tezos-baker-network.self_link
+  network = google_compute_network.blockchain-network.self_link
 
   bgp {
     asn = 64514
   }
 }
 
-resource "google_compute_router_nat" "tezos-baker-nat" {
-  name    = "tezos-baker-nat-1"
-  project = local.blockchain_cluster_project_id
-  router  = google_compute_router.tezos-baker-router.name
+resource "google_compute_router_nat" "blockchain-nat" {
+  name    = "blockchain-nat-1"
+  project      = data.google_project.blockchain_cluster.project_id
+  router  = google_compute_router.blockchain-router.name
   region  = var.region
 
   nat_ip_allocate_option = "MANUAL_ONLY"
-  nat_ips                = google_compute_address.tezos-baker-nat.*.self_link
+  nat_ips                = google_compute_address.blockchain-nat.*.self_link
 
   source_subnetwork_ip_ranges_to_nat = "LIST_OF_SUBNETWORKS"
 
   subnetwork {
-    name                    = google_compute_subnetwork.tezos-baker-subnetwork.self_link
+    name                    = google_compute_subnetwork.blockchain-subnetwork.self_link
     source_ip_ranges_to_nat = ["PRIMARY_IP_RANGE", "LIST_OF_SECONDARY_IP_RANGES"]
 
     secondary_ip_range_names = [
-      google_compute_subnetwork.tezos-baker-subnetwork.secondary_ip_range[0].range_name,
-      google_compute_subnetwork.tezos-baker-subnetwork.secondary_ip_range[1].range_name,
+      google_compute_subnetwork.blockchain-subnetwork.secondary_ip_range[0].range_name,
+      google_compute_subnetwork.blockchain-subnetwork.secondary_ip_range[1].range_name,
     ]
   }
 }
 
-# Get latest cluster version
-data "google_container_engine_versions" "versions" {
-  project  = local.blockchain_cluster_project_id
-  location = var.region
-}
 
 # Create the GKE cluster
 resource "google_container_cluster" "blockchain_cluster" {
   provider = google-beta
 
-  name     = "tezos-baker"
-  project  = local.blockchain_cluster_project_id
+  name     = "blockchain"
+  project      = data.google_project.blockchain_cluster.project_id
   location = var.region
   node_locations = var.node_locations
 
-  network    = google_compute_network.tezos-baker-network.self_link
-  subnetwork = google_compute_subnetwork.tezos-baker-subnetwork.self_link
+  network    = google_compute_network.blockchain-network.self_link
+  subnetwork = google_compute_subnetwork.blockchain-subnetwork.self_link
 
   initial_node_count = var.kubernetes_nodes_per_zone
-
-  min_master_version = data.google_container_engine_versions.versions.latest_master_version
 
   logging_service    = var.kubernetes_logging_service
   monitoring_service = var.kubernetes_monitoring_service
@@ -216,8 +198,8 @@ resource "google_container_cluster" "blockchain_cluster" {
 
   # Allocate IPs in our subnetwork
   ip_allocation_policy {
-    cluster_secondary_range_name  = google_compute_subnetwork.tezos-baker-subnetwork.secondary_ip_range[0].range_name
-    services_secondary_range_name = google_compute_subnetwork.tezos-baker-subnetwork.secondary_ip_range[1].range_name
+    cluster_secondary_range_name  = google_compute_subnetwork.blockchain-subnetwork.secondary_ip_range[0].range_name
+    services_secondary_range_name = google_compute_subnetwork.blockchain-subnetwork.secondary_ip_range[1].range_name
   }
 
   # Specify the list of CIDRs which can access the master's API
@@ -247,7 +229,7 @@ resource "google_container_cluster" "blockchain_cluster" {
   depends_on = [
     google_project_service.service,
     google_project_iam_member.service-account,
-    google_compute_router_nat.tezos-baker-nat,
+    google_compute_router_nat.blockchain-nat,
   ]
   remove_default_node_pool = true
   vertical_pod_autoscaling {
@@ -258,11 +240,10 @@ resource "google_container_cluster" "blockchain_cluster" {
 
 resource "google_container_node_pool" "blockchain_cluster_node_pool" {
   provider = google-beta
-  project = local.blockchain_cluster_project_id
+  project      = data.google_project.blockchain_cluster.project_id
   name       = "tzbaker-pool"
   location   = var.region
 
-  version       = data.google_container_engine_versions.versions.latest_node_version
   cluster    = "${google_container_cluster.blockchain_cluster.name}"
   node_count = 1
 
@@ -273,7 +254,7 @@ resource "google_container_node_pool" "blockchain_cluster_node_pool" {
 
   node_config {
     machine_type    = var.kubernetes_instance_type
-    service_account = google_service_account.tezos-baker-server.email
+    service_account = google_service_account.blockchain-server.email
 
     # Set metadata on the VM to supply more entropy
     metadata = {
@@ -303,49 +284,6 @@ resource "google_container_node_pool" "blockchain_cluster_node_pool" {
   }
 }
 
-# Provision IP
-resource "google_compute_address" "signer_forwarder_target" {
-  name    = "tezos-baker-lb"
-  region  = var.region
-  project = local.blockchain_cluster_project_id
-
-  depends_on = [google_project_service.service]
-}
-
-
 resource "random_id" "rnd" {
   byte_length = 4
-}
-
-resource "google_storage_bucket" "website" {
-  name     = "tezos-baker-website-static-bucket-${random_id.rnd.hex}"
-  project = local.blockchain_cluster_project_id
-
-  website {
-    main_page_suffix = "index.html"
-    not_found_page   = "404.html"
-  }
-  force_destroy = true
-}
-
-resource "google_service_account" "website_pusher" {
-  account_id   = "website-pusher"
-  display_name = "Tezos Website Pusher"
-  project = local.blockchain_cluster_project_id
-}
-
-resource "google_storage_bucket_iam_member" "member" {
-  bucket = "${google_storage_bucket.website.name}"
-  role        = "roles/storage.objectAdmin"
-  member      = "serviceAccount:${google_service_account.website_pusher.email}"
-}
-
-resource "google_storage_bucket_iam_member" "make_public" {
-  bucket = "${google_storage_bucket.website.name}"
-  role        = "roles/storage.objectViewer"
-  member      = "allUsers"
-}
-
-resource "google_service_account_key" "website_builder_key" {
-  service_account_id = google_service_account.website_pusher.name
 }

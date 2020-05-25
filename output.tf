@@ -8,14 +8,14 @@ output "cluster_ca_certificate" {
   )
 }
 
-output "token" {
-  value = data.google_client_config.current.access_token
-}
-
-output "cluster_name" {
+output "name" {
   value = google_container_cluster.blockchain_cluster.name
 }
 
-output "cluster_location" {
+output "location" {
   value = google_container_cluster.blockchain_cluster.location
+}
+
+output "project" {
+  value = google_container_cluster.blockchain_cluster.project
 }

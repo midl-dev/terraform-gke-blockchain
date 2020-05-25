@@ -16,10 +16,21 @@ variable "billing_account" {
   description = "Billing account ID."
 }
 
+variable "terraform_service_account_credentials" {
+  type = string
+  description = "path to terraform service account file, created following the instructions in https://cloud.google.com/community/tutorials/managing-gcp-projects-with-terraform"
+}
+
 variable "project" {
   type        = string
   default     = ""
   description = "Project ID where Terraform is authenticated to run to create additional projects. If provided, Terraform will great the GKE and Tezos cluster inside this project. If not given, Terraform will generate a new project."
+}
+
+variable "project_prefix" {
+  type = string
+  default = "blkchain"
+  description = "A project prefix. If the project id is not given, the created project will be this prefix followed by a random string"
 }
 
 variable "region" {
@@ -61,6 +72,8 @@ variable "project_services" {
     "logging.googleapis.com",
     "monitoring.googleapis.com",
     "dns.googleapis.com",
+    "serviceusage.googleapis.com",
+    "cloudbuild.googleapis.com"
   ]
   description = "List of services to enable on the project."
 }
@@ -133,110 +146,3 @@ variable "kubernetes_master_authorized_networks" {
   description = "List of CIDR blocks to allow access to the master's API endpoint. This is specified as a slice of objects, where each object has a display_name and cidr_block attribute. The default behavior is to allow anyone (0.0.0.0/0) access to the endpoint. You should restrict access to external IPs that need to access the cluster."
 }
 
-#
-# Cloudflare options
-# ------------------------------
-
-variable "cloudflare_email" {
-  type = string
-  description = "Cloudflare login email, for https."
-}
-
-variable "cloudflare_api_key" {
-  type = string
-  description = "Cloudflare API key, for https."
-}
-
-variable "cloudflare_account_id" {
-  type = string
-  description = "Cloudflare account id for website."
-}
-
-variable "dns_mx_record_1" {
-  type = string
-  description = "First mx record for email associated to domain."
-}
-
-variable "dns_mx_record_2" {
-  type = string
-  description = "Second mx record for email associated to domain."
-}
-
-variable "dns_spf_record" {
-  type = string
-  description = "DNS spf record for email anti-spoofing."
-}
-
-#
-# Tezos node and baker options
-# ------------------------------
-
-variable "public_baking_key" {
-  type  = string
-  description = "The public baker tz1 public key that delegators delegate to."
-}
-
-variable "rolling_snapshot_url" {
-  type = string
-  description = "The public URL where to download the Tezos blockchain snapshot for quicker sync of the public nodes."
-}
-
-variable "full_snapshot_url" {
-  type = string
-  description = "The public URL where to download the full historical Tezos blockchain for quicker sync of the private node."
-}
-
-variable "authorized_signer_key_a" {
-  type = string
-  description = "Public key of the first remote signer."
-}
-
-variable "authorized_signer_key_b" {
-  type = string
-  description = "Public key of the first remote signer."
-}
-
-variable "tezos_network" {
-  type =string
-  description = "The Tezos network (alphanet and mainnet supported)."
-}
-
-variable "tezos_sentry_version" {
-  type =string
-  description = "The tezos container version for sentry (public) nodes. Should be hard-coded to a version from https://hub.docker.com/r/tezos/tezos/tags. Not recommended to set to a rolling tag like 'mainnet', because it may break unexpectedly. Example: mainnet_06398944_20200211142914"
-  default = "mainnet"
-}
-
-variable "tezos_private_version" {
-  type =string
-  description = "The tezos container version for private node. Should be hard-coded to a version from https://hub.docker.com/r/tezos/tezos/tags. Not recommended to set to a rolling tag like 'mainnet', because it may break unexpectedly. Example: mainnet_06398944_20200211142914"
-  default = "mainnet"
-}
-
-variable "website" {
-  type = string
-  description = "Address of the baker's static website hosted on GCP."
-}
-
-variable "website_archive" {
-  type = string
-  description = "URL of the archive for the Jekyll website to deploy."
-}
-
-variable "signer_target_random_hostname" {
-  type = string
-  description = "Random string such as 128fecf31d for the fqdn of the ssh endpoint the remote signer connects to (for example 128fec31d.mybaker.com)."
-  default = "signer"
-}
-
-variable "protocol" {
-  type = string
-  description = "The Tezos protocol currently in use, for example 006-PsCARTHA."
-  default = "006-PsCARTHA"
-}
-
-variable "protocol_short" {
-  type = string
-  description = "The short string describing the protocol, for example PsCARTHA."
-  default = "PsCARTHA"
-}
