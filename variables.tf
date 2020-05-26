@@ -73,6 +73,7 @@ variable "project_services" {
     "monitoring.googleapis.com",
     "dns.googleapis.com",
     "serviceusage.googleapis.com",
+    "cloudbilling.googleapis.com",
     "cloudbuild.googleapis.com"
   ]
   description = "List of services to enable on the project."

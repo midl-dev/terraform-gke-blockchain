@@ -244,7 +244,7 @@ resource "google_container_node_pool" "blockchain_cluster_node_pool" {
   name       = "tzbaker-pool"
   location   = var.region
 
-  cluster    = "${google_container_cluster.blockchain_cluster.name}"
+  cluster    = google_container_cluster.blockchain_cluster.name
   node_count = 1
 
   management {
