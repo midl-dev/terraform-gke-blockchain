@@ -2,12 +2,14 @@ resource "kubernetes_namespace" "flux_namespace" {
   metadata {
     name = "flux"
   }
+  depends_on = [ google_container_node_pool.blockchain_cluster_node_pool ]
 }
 
 resource "kubernetes_namespace" "monitoring_namespace" {
   metadata {
     name = "monitoring"
   }
+  depends_on = [ google_container_node_pool.blockchain_cluster_node_pool ]
 }
 
 resource "null_resource" "deploy_prometheus" {
@@ -30,5 +32,5 @@ popd
 EOF
 
   }
-  depends_on = [ google_container_node_pool.blockchain_cluster_node_pool, kubernetes_namespace.flux_namespace, kubernetes_namespace.monitoring_namespace ]
+  depends_on = [ kubernetes_namespace.flux_namespace, kubernetes_namespace.monitoring_namespace ]
 }
