@@ -241,7 +241,7 @@ resource "google_container_cluster" "blockchain_cluster" {
 resource "google_container_node_pool" "blockchain_cluster_node_pool" {
   provider = google-beta
   project      = data.google_project.blockchain_cluster.project_id
-  name       = "tzbaker-pool"
+  name       = "blockchain-pool"
   location   = var.region
 
   cluster    = google_container_cluster.blockchain_cluster.name

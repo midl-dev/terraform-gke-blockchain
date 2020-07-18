@@ -1,0 +1,49 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: helm-operator
+  namespace: flux
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: helm-operator
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        name: helm-operator
+      annotations:
+        prometheus.io/scrape: "true"
+    spec:
+      serviceAccountName: helm-operator
+      containers:
+      - name: helm-operator
+        # There are no ":latest" images for helm-operator. Find the most recent
+        # release or image version at https://hub.docker.com/r/fluxcd/helm-operator/tags
+        # and replace the tag here.
+        image: docker.io/fluxcd/helm-operator:1.1.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 3030
+        livenessProbe:
+          httpGet:
+            port: 3030
+            path: /healthz
+          initialDelaySeconds: 1
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            port: 3030
+            path: /healthz
+          initialDelaySeconds: 1
+          timeoutSeconds: 5
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+        args:
+        - --enabled-helm-versions=v3
