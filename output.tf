@@ -16,6 +16,10 @@ output "location" {
   value = google_container_cluster.blockchain_cluster.location
 }
 
+output "node_locations" {
+  value = var.node_locations
+}
+
 output "project" {
   value = google_container_cluster.blockchain_cluster.project
 }
