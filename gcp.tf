@@ -138,6 +138,24 @@ resource "google_compute_router_nat" "blockchain-nat" {
   }
 }
 
+# Allow the k8s control plane to talk to kubelets, for prometheus admission rules
+# https://github.com/prometheus-operator/prometheus-operator/issues/2711
+resource "google_compute_firewall" "gke-master-to-kubelet" {
+  name    = "k8s-master-to-kubelets"
+  network    = google_compute_network.blockchain-network.self_link
+  project      = data.google_project.blockchain_cluster.project_id
+
+  description = "GKE master to kubelets"
+
+  source_ranges = [var.kubernetes_masters_ipv4_cidr]
+
+  allow {
+    protocol = "tcp"
+    ports    = ["8443"]
+  }
+
+  target_tags = ["gke-main"]
+}
 
 # Create the GKE cluster
 resource "google_container_cluster" "blockchain_cluster" {
@@ -274,6 +292,7 @@ resource "google_container_node_pool" "blockchain_cluster_node_pool" {
     preemptible  = false
     image_type = "COS"
     disk_type = "pd-standard"
+    tags = [ "gke-main" ]
 
     oauth_scopes = [
       "https://www.googleapis.com/auth/devstorage.read_only",
