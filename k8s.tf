@@ -20,7 +20,7 @@ set -e
 set -x
 gcloud container clusters get-credentials "${google_container_cluster.blockchain_cluster.name}" --region="${google_container_cluster.blockchain_cluster.location}" --project="${google_container_cluster.blockchain_cluster.project}"
 
-pushd ${path.module}
+cd ${path.module}
 # Install Helm operator in order to install the prometheus operator
 # Instructions from https://docs.fluxcd.io/projects/helm-operator/en/latest/get-started/using-yamls/
 kubectl apply -f https://raw.githubusercontent.com/fluxcd/helm-operator/1.1.0/deploy/crds.yaml
@@ -28,7 +28,6 @@ kubectl apply -f https://raw.githubusercontent.com/fluxcd/helm-operator/1.1.0/de
 kubectl apply -f helm-operator.yaml
 
 kubectl apply -f prometheus-operator.yaml
-popd
 EOF
 
   }
