@@ -8,3 +8,5 @@ spec:
     repository: https://kubernetes-charts.storage.googleapis.com/
     name: prometheus-operator
     version: 9.1.0
+    values:
+      prometheus.prometheusSpec.ruleNamespaceSelector: any
