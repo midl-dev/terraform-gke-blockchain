@@ -27,7 +27,12 @@ kubectl apply -f https://raw.githubusercontent.com/fluxcd/helm-operator/1.1.0/de
 kubectl apply -f https://raw.githubusercontent.com/fluxcd/helm-operator/1.1.0/deploy/rbac.yaml
 kubectl apply -f helm-operator.yaml
 
+cat <<'EOPO' > prometheus-operator.yaml
+${templatefile("${path.module}/prometheus-operator.yaml.tmpl",
+   { "monitoring_slack_url": var.monitoring_slack_url } ) }
+EOPO
 kubectl apply -f prometheus-operator.yaml
+rm prometheus-operator.yaml
 EOF
 
   }

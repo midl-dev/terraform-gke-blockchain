@@ -147,3 +147,13 @@ variable "kubernetes_master_authorized_networks" {
   description = "List of CIDR blocks to allow access to the master's API endpoint. This is specified as a slice of objects, where each object has a display_name and cidr_block attribute. The default behavior is to allow anyone (0.0.0.0/0) access to the endpoint. You should restrict access to external IPs that need to access the cluster."
 }
 
+
+#
+# Monitoring options
+# --------------------------------
+
+variable "monitoring_slack_url" {
+  type = string
+  default = ""
+  description = "slack api url to send prometheus alerts to"
+}
