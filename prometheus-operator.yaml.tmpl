@@ -22,11 +22,11 @@ spec:
           group_wait: 30s
           group_interval: 5m
           repeat_interval: 12h
-          receiver: 'slack'
           routes:
           - match:
-              alertname: watchdog
+              alertname: Watchdog
             receiver: 'null'
+          - receiver: 'slack'
         receivers:
         - name: 'null'
         - name: 'slack'
