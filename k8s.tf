@@ -1,15 +1,21 @@
+resource "null_resource" "control_plane_available" {
+  # wait a bit longer for control plane to be available before moving on
+  command = "sleep 10"
+  depends_on = [ google_container_node_pool.blockchain_cluster_node_pool ]
+}
+
 resource "kubernetes_namespace" "flux_namespace" {
   metadata {
     name = "flux"
   }
-  depends_on = [ google_container_node_pool.blockchain_cluster_node_pool ]
+  depends_on = [ null_resource.control_plane_available ]
 }
 
 resource "kubernetes_namespace" "monitoring_namespace" {
   metadata {
     name = "monitoring"
   }
-  depends_on = [ google_container_node_pool.blockchain_cluster_node_pool ]
+  depends_on = [ null_resource.control_plane_available ]
 }
 
 resource "null_resource" "deploy_prometheus" {

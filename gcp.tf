@@ -169,7 +169,7 @@ resource "google_container_cluster" "blockchain_cluster" {
   network    = google_compute_network.blockchain-network.self_link
   subnetwork = google_compute_subnetwork.blockchain-subnetwork.self_link
 
-  initial_node_count = var.kubernetes_nodes_per_zone
+  initial_node_count = 1
 
   logging_service    = var.kubernetes_logging_service
   monitoring_service = var.kubernetes_monitoring_service
