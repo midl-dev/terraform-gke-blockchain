@@ -15,7 +15,9 @@ spec:
     alertmanager:
       config:
         global:
+        %{ if monitoring_slack_url != "" }
           slack_api_url: "${monitoring_slack_url}"
+        %{ endif}
           resolve_timeout: 5m
         route:
           group_by: ['job']
@@ -24,9 +26,21 @@ spec:
           repeat_interval: 12h
           routes:
           - match:
-              alertname: Watchdog
-            receiver: 'null'
-          - receiver: 'slack'
+              alertname: NoRemoteSigner
+            receiver: 'slack'
+          - match:
+              alertname: KubePersistentVolumeFillingUp
+            receiver: 'slack'
+          - match:
+              alertname: SignerPowerLoss
+            receiver: 'slack'
+          - match:
+              alertname: SignerWiredNetworkLoss
+            receiver: 'slack'
+          - match:
+              alertname: SignerWirelessNetworkLoss
+            receiver: 'slack'
+          - receiver: 'null'
         receivers:
         - name: 'null'
         - name: 'slack'
