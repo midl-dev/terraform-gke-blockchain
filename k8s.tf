@@ -1,6 +1,8 @@
 resource "null_resource" "control_plane_available" {
-  # wait a bit longer for control plane to be available before moving on
-  command = "sleep 10"
+  provisioner "local-exec" {
+    # wait a bit longer for control plane to be available before moving on
+    command = "sleep 10"
+  }
   depends_on = [ google_container_node_pool.blockchain_cluster_node_pool ]
 }
 
