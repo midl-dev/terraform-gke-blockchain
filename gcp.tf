@@ -257,13 +257,14 @@ resource "google_container_cluster" "blockchain_cluster" {
 
 
 resource "google_container_node_pool" "blockchain_cluster_node_pool" {
+  for_each = var.node_pools
   provider = google-beta
   project      = data.google_project.blockchain_cluster.project_id
-  name       = "blockchain-pool"
+  name       = each.key
   location   = var.region
 
   cluster    = google_container_cluster.blockchain_cluster.name
-  node_count = 1
+  node_count = each.value["node_count"]
 
   management {
      auto_repair = "true"
@@ -271,7 +272,7 @@ resource "google_container_node_pool" "blockchain_cluster_node_pool" {
   }
 
   node_config {
-    machine_type    = var.kubernetes_instance_type
+    machine_type    = each.value["instance_type"]
     service_account = google_service_account.blockchain-server.email
 
     # Set metadata on the VM to supply more entropy
