@@ -4,6 +4,8 @@ A terraform module to deploy a GKE custer optimized for deploying blockchain nod
 
 Brought to you by [MIDL.dev](https://midl.dev), staking-as-a-service provider.
 
+[Go to documentation](https://tezos-docs.midl.dev)
+
 # Mode of operation
 
 There are three ways of spinning up the infrastructure:
@@ -13,4 +15,3 @@ There are three ways of spinning up the infrastructure:
 * from an existing project and existing kubernetes cluster
 
 The way to select which of the ways to use is to pass different paramters.
-
