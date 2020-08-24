@@ -138,6 +138,24 @@ resource "google_compute_router_nat" "blockchain-nat" {
   }
 }
 
+# Allow the k8s control plane to talk to kubelets, for prometheus admission rules
+# https://github.com/prometheus-operator/prometheus-operator/issues/2711
+resource "google_compute_firewall" "gke-master-to-kubelet" {
+  name    = "k8s-master-to-kubelets"
+  network    = google_compute_network.blockchain-network.self_link
+  project      = data.google_project.blockchain_cluster.project_id
+
+  description = "GKE master to kubelets"
+
+  source_ranges = [var.kubernetes_masters_ipv4_cidr]
+
+  allow {
+    protocol = "tcp"
+    ports    = ["8443"]
+  }
+
+  target_tags = ["gke-main"]
+}
 
 # Create the GKE cluster
 resource "google_container_cluster" "blockchain_cluster" {
@@ -151,7 +169,7 @@ resource "google_container_cluster" "blockchain_cluster" {
   network    = google_compute_network.blockchain-network.self_link
   subnetwork = google_compute_subnetwork.blockchain-subnetwork.self_link
 
-  initial_node_count = var.kubernetes_nodes_per_zone
+  initial_node_count = 1
 
   logging_service    = var.kubernetes_logging_service
   monitoring_service = var.kubernetes_monitoring_service
@@ -239,13 +257,14 @@ resource "google_container_cluster" "blockchain_cluster" {
 
 
 resource "google_container_node_pool" "blockchain_cluster_node_pool" {
+  for_each = var.node_pools
   provider = google-beta
   project      = data.google_project.blockchain_cluster.project_id
-  name       = "tzbaker-pool"
+  name       = each.key
   location   = var.region
 
   cluster    = google_container_cluster.blockchain_cluster.name
-  node_count = 1
+  node_count = each.value["node_count"]
 
   management {
      auto_repair = "true"
@@ -253,7 +272,7 @@ resource "google_container_node_pool" "blockchain_cluster_node_pool" {
   }
 
   node_config {
-    machine_type    = var.kubernetes_instance_type
+    machine_type    = each.value["instance_type"]
     service_account = google_service_account.blockchain-server.email
 
     # Set metadata on the VM to supply more entropy
@@ -274,6 +293,7 @@ resource "google_container_node_pool" "blockchain_cluster_node_pool" {
     preemptible  = false
     image_type = "COS"
     disk_type = "pd-standard"
+    tags = [ "gke-main" ]
 
     oauth_scopes = [
       "https://www.googleapis.com/auth/devstorage.read_only",

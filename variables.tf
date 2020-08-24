@@ -45,12 +45,6 @@ variable "node_locations" {
   description = "List of locations within the regions where to deploy the nodes."
 }
 
-variable "kubernetes_instance_type" {
-  type        = string
-  default     = "e2-standard-2"
-  description = "Instance type to use for the nodes."
-}
-
 variable "service_account_iam_roles" {
   type = list(string)
   default = [
@@ -82,12 +76,6 @@ variable "project_services" {
 #
 # Kubernetes options
 # ------------------------------
-
-variable "kubernetes_nodes_per_zone" {
-  type        = number
-  default     = 1
-  description = "Number of nodes to deploy in each zone of the Kubernetes cluster. For example, if there are 4 zones in the region and num_nodes_per_zone is 2, 8 total nodes will be created."
-}
 
 variable "kubernetes_daily_maintenance_window" {
   type        = string
@@ -147,3 +135,22 @@ variable "kubernetes_master_authorized_networks" {
   description = "List of CIDR blocks to allow access to the master's API endpoint. This is specified as a slice of objects, where each object has a display_name and cidr_block attribute. The default behavior is to allow anyone (0.0.0.0/0) access to the endpoint. You should restrict access to external IPs that need to access the cluster."
 }
 
+#
+# Node pool option
+# --------------------------------
+
+variable "node_pools" {
+  type = map
+  default =  { "blockchain_pool" : { "node_count": 1, "instance_type": "e2-standard-2" } }
+  description = "A map of node pools. Lets you define several of them for better isolation"
+}
+
+#
+# Monitoring options
+# --------------------------------
+
+variable "monitoring_slack_url" {
+  type = string
+  default = ""
+  description = "slack api url to send prometheus alerts to"
+}
