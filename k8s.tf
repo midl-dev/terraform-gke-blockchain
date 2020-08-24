@@ -1,23 +1,15 @@
-resource "null_resource" "control_plane_available" {
-  provisioner "local-exec" {
-    # wait a bit longer for control plane to be available before moving on
-    command = "sleep 10"
-  }
-  depends_on = [ google_container_node_pool.blockchain_cluster_node_pool ]
-}
-
 resource "kubernetes_namespace" "flux_namespace" {
   metadata {
     name = "flux"
   }
-  depends_on = [ null_resource.control_plane_available ]
+  depends_on = [ google_container_node_pool.blockchain_cluster_node_pool ]
 }
 
 resource "kubernetes_namespace" "monitoring_namespace" {
   metadata {
     name = "monitoring"
   }
-  depends_on = [ null_resource.control_plane_available ]
+  depends_on = [ kubernetes_namespace.flux_namespace ]
 }
 
 resource "null_resource" "deploy_prometheus" {
@@ -44,5 +36,5 @@ rm prometheus-operator.yaml
 EOF
 
   }
-  depends_on = [ kubernetes_namespace.flux_namespace, kubernetes_namespace.monitoring_namespace ]
+  depends_on = [ kubernetes_namespace.monitoring_namespace ]
 }
