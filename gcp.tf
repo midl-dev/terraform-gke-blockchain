@@ -178,6 +178,9 @@ resource "google_container_cluster" "blockchain_cluster" {
   # here as well.
   enable_legacy_abac = false
 
+  release_channel {
+    channel = var.release_channel
+  }
 
   # Configure various addons
   addons_config {
