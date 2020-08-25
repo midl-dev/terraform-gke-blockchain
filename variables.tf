@@ -141,7 +141,7 @@ variable "kubernetes_master_authorized_networks" {
 
 variable "node_pools" {
   type = map
-  default =  { "blockchain_pool" : { "node_count": 1, "instance_type": "e2-standard-2" } }
+  default =  { "blockchain-pool" : { "node_count": 1, "instance_type": "e2-standard-2" } }
   description = "A map of node pools. Lets you define several of them for better isolation"
 }
 
