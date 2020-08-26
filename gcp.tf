@@ -192,6 +192,9 @@ resource "google_container_cluster" "blockchain_cluster" {
     horizontal_pod_autoscaling {
       disabled = false
     }
+    gce_persistent_disk_csi_driver_config {
+      enabled = true
+    }
   }
 
   # Disable basic authentication and cert-based authentication.
