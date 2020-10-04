@@ -211,6 +211,7 @@ resource "google_container_cluster" "blockchain_cluster" {
   # has to be in here twice.
   network_policy {
     enabled = true
+    #provider = "CALICO"
   }
 
   # Set the maintenance window.
@@ -256,6 +257,10 @@ resource "google_container_cluster" "blockchain_cluster" {
     google_compute_router_nat.blockchain-nat,
   ]
   remove_default_node_pool = true
+  workload_identity_config {
+    identity_namespace = "${data.google_project.blockchain_cluster.project_id}.svc.id.goog"
+  }
+
   vertical_pod_autoscaling {
     enabled = true
   }
@@ -290,13 +295,10 @@ resource "google_container_node_pool" "blockchain_cluster_node_pool" {
     labels = {
       service = "blockchain_cluster"
     }
-
-
-    # Protect node metadata
-    workload_metadata_config {
-      node_metadata = "SECURE"
-    }
     preemptible  = false
+    workload_metadata_config {
+      node_metadata = "GKE_METADATA_SERVER"
+    }
     image_type = "COS"
     disk_type = "pd-standard"
     tags = [ "gke-main" ]
