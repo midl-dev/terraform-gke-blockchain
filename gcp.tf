@@ -211,7 +211,7 @@ resource "google_container_cluster" "blockchain_cluster" {
   # has to be in here twice.
   network_policy {
     enabled = true
-    #provider = "CALICO"
+    provider = "CALICO"
   }
 
   # Set the maintenance window.
