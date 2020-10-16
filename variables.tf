@@ -141,6 +141,12 @@ variable "release_channel" {
   default = "STABLE"
 }
 
+variable "vpc_native" {
+  description = "vpc native cluster if true, routes-based cluster if false"
+  type = bool
+  default = "true"
+}
+
 #
 # Node pool option
 # --------------------------------

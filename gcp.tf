@@ -66,7 +66,7 @@ resource "google_project_service" "service" {
 
 # Create an external NAT IP
 resource "google_compute_address" "blockchain-nat" {
-  count   = 2
+  count           = var.vpc_native ? 2 : 0
   name    = "blockchain-nat-external-${count.index}"
   project      = data.google_project.blockchain_cluster.project_id
   region  = var.region
@@ -76,6 +76,7 @@ resource "google_compute_address" "blockchain-nat" {
 
 # Create a network for GKE
 resource "google_compute_network" "blockchain-network" {
+  count           = var.vpc_native ? 1 : 0
   name                    = "blockchain-network"
   project      = data.google_project.blockchain_cluster.project_id
   auto_create_subnetworks = false
@@ -83,11 +84,23 @@ resource "google_compute_network" "blockchain-network" {
   depends_on = [google_project_service.service]
 }
 
+data "google_compute_network" "default-network" {
+  name = "default"
+  project      = data.google_project.blockchain_cluster.project_id
+}
+
+data "google_compute_subnetwork" "default-subnetwork" {
+  name = "default"
+  region        = var.region
+  project      = data.google_project.blockchain_cluster.project_id
+}
+
 # Create subnets
 resource "google_compute_subnetwork" "blockchain-subnetwork" {
+  count           = var.vpc_native ? 1 : 0
   name          = "blockchain-subnetwork"
   project      = data.google_project.blockchain_cluster.project_id
-  network       = google_compute_network.blockchain-network.self_link
+  network       = google_compute_network.blockchain-network[count.index].self_link
   region        = var.region
   ip_cidr_range = var.kubernetes_network_ipv4_cidr
 
@@ -106,10 +119,11 @@ resource "google_compute_subnetwork" "blockchain-subnetwork" {
 
 # Create a NAT router so the nodes can reach DockerHub, etc
 resource "google_compute_router" "blockchain-router" {
+  count           = var.vpc_native ? 1 : 0
   name    = "blockchain-router"
   project      = data.google_project.blockchain_cluster.project_id
   region  = var.region
-  network = google_compute_network.blockchain-network.self_link
+  network = google_compute_network.blockchain-network[count.index].self_link
 
   bgp {
     asn = 64514
@@ -117,9 +131,10 @@ resource "google_compute_router" "blockchain-router" {
 }
 
 resource "google_compute_router_nat" "blockchain-nat" {
+  count           = var.vpc_native ? 1 : 0
   name    = "blockchain-nat-1"
   project      = data.google_project.blockchain_cluster.project_id
-  router  = google_compute_router.blockchain-router.name
+  router  = google_compute_router.blockchain-router[count.index].name
   region  = var.region
 
   nat_ip_allocate_option = "MANUAL_ONLY"
@@ -128,12 +143,12 @@ resource "google_compute_router_nat" "blockchain-nat" {
   source_subnetwork_ip_ranges_to_nat = "LIST_OF_SUBNETWORKS"
 
   subnetwork {
-    name                    = google_compute_subnetwork.blockchain-subnetwork.self_link
+    name                    = google_compute_subnetwork.blockchain-subnetwork[count.index].self_link
     source_ip_ranges_to_nat = ["PRIMARY_IP_RANGE", "LIST_OF_SECONDARY_IP_RANGES"]
 
     secondary_ip_range_names = [
-      google_compute_subnetwork.blockchain-subnetwork.secondary_ip_range[0].range_name,
-      google_compute_subnetwork.blockchain-subnetwork.secondary_ip_range[1].range_name,
+      google_compute_subnetwork.blockchain-subnetwork[count.index].secondary_ip_range[0].range_name,
+      google_compute_subnetwork.blockchain-subnetwork[count.index].secondary_ip_range[1].range_name,
     ]
   }
 }
@@ -142,7 +157,7 @@ resource "google_compute_router_nat" "blockchain-nat" {
 # https://github.com/prometheus-operator/prometheus-operator/issues/2711
 resource "google_compute_firewall" "gke-master-to-kubelet" {
   name    = "k8s-master-to-kubelets"
-  network    = google_compute_network.blockchain-network.self_link
+  network    = var.vpc_native ? google_compute_network.blockchain-network[0].self_link : data.google_compute_network.default-network.self_link
   project      = data.google_project.blockchain_cluster.project_id
 
   description = "GKE master to kubelets"
@@ -166,8 +181,8 @@ resource "google_container_cluster" "blockchain_cluster" {
   location = var.region
   node_locations = var.node_locations
 
-  network    = google_compute_network.blockchain-network.self_link
-  subnetwork = google_compute_subnetwork.blockchain-subnetwork.self_link
+  network       = var.vpc_native ? google_compute_network.blockchain-network[0].self_link : data.google_compute_network.default-network.self_link
+  subnetwork    = var.vpc_native ? google_compute_subnetwork.blockchain-subnetwork[0].self_link : data.google_compute_subnetwork.default-subnetwork.self_link
 
   initial_node_count = 1
 
@@ -221,10 +236,14 @@ resource "google_container_cluster" "blockchain_cluster" {
     }
   }
 
+  networking_mode = var.vpc_native ? "VPC_NATIVE" :  "ROUTES"
   # Allocate IPs in our subnetwork
-  ip_allocation_policy {
-    cluster_secondary_range_name  = google_compute_subnetwork.blockchain-subnetwork.secondary_ip_range[0].range_name
-    services_secondary_range_name = google_compute_subnetwork.blockchain-subnetwork.secondary_ip_range[1].range_name
+  dynamic "ip_allocation_policy" {
+    for_each = var.vpc_native ? [1] : []
+    content {
+      cluster_secondary_range_name  = google_compute_subnetwork.blockchain-subnetwork[0].secondary_ip_range[0].range_name
+      services_secondary_range_name = google_compute_subnetwork.blockchain-subnetwork[0].secondary_ip_range[1].range_name
+    }
   }
 
   # Specify the list of CIDRs which can access the master's API
@@ -239,22 +258,24 @@ resource "google_container_cluster" "blockchain_cluster" {
   }
 
   # Configure the cluster to be private (not have public facing IPs)
-  private_cluster_config {
-    # This field is misleading. This prevents access to the master API from
-    # any external IP. While that might represent the most secure
-    # configuration, it is not ideal for most setups. As such, we disable the
-    # private endpoint (allow the public endpoint) and restrict which CIDRs
-    # can talk to that endpoint.
-    enable_private_endpoint = false
-
-    enable_private_nodes   = true
-    master_ipv4_cidr_block = var.kubernetes_masters_ipv4_cidr
+  dynamic "private_cluster_config" {
+    for_each = var.vpc_native ? [1] : []
+    content {
+      # This field is misleading. This prevents access to the master API from
+      # any external IP. While that might represent the most secure
+      # configuration, it is not ideal for most setups. As such, we disable the
+      # private endpoint (allow the public endpoint) and restrict which CIDRs
+      # can talk to that endpoint.
+      enable_private_endpoint = false
+  
+      enable_private_nodes   = true
+      master_ipv4_cidr_block = var.kubernetes_masters_ipv4_cidr
+    }
   }
 
   depends_on = [
     google_project_service.service,
     google_project_iam_member.service-account,
-    google_compute_router_nat.blockchain-nat,
   ]
   remove_default_node_pool = true
   workload_identity_config {
