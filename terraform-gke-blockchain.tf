@@ -1,3 +1,12 @@
+# This module is split into two modules per the recommendation of the
+# kubernetes provider documentation.
+
+# https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs
+
+# Quote:
+
+# When using interpolation to pass credentials to the Kubernetes provider from other resources, these resources SHOULD NOT be created in the same Terraform module where Kubernetes provider resources are also used. This will lead to intermittent and unpredictable errors which are hard to debug and diagnose. The root issue lies with the order in which Terraform itself evaluates the provider blocks vs. actual resources. 
+
 module "gcp_module" {
   source = "./gcp_module"
   org_id = var.org_id
