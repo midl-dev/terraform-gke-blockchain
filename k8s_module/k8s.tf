@@ -1,8 +1,19 @@
+# Configure kubernetes provider with Oauth2 access token.
+# https://registry.terraform.io/providers/hashicorp/google/latest/docs/data-sources/client_config
+# This fetches a new token, which will expire in 1 hour.
+data "google_client_config" "default" {
+}
+
+provider "kubernetes" {
+  host             = var.kubernetes_endpoint
+  cluster_ca_certificate = var.cluster_ca_certificate
+  token = data.google_client_config.default.access_token
+}
+
 resource "kubernetes_namespace" "flux_namespace" {
   metadata {
     name = "flux"
   }
-  depends_on = [ google_container_node_pool.blockchain_cluster_node_pool ]
 }
 
 resource "kubernetes_namespace" "monitoring_namespace" {
@@ -18,7 +29,7 @@ resource "null_resource" "deploy_prometheus" {
     command = <<EOF
 set -e
 set -x
-gcloud container clusters get-credentials "${google_container_cluster.blockchain_cluster.name}" --region="${google_container_cluster.blockchain_cluster.location}" --project="${google_container_cluster.blockchain_cluster.project}"
+gcloud container clusters get-credentials "${var.cluster_name}" --region="${var.cluster_location}" --project="${var.project}"
 
 cd ${path.module}
 # Install Helm operator in order to install the prometheus operator

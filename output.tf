@@ -1,25 +1,23 @@
 output "kubernetes_endpoint" {
-  value = google_container_cluster.blockchain_cluster.endpoint
+  value = module.gcp_module.kubernetes_endpoint
 }
 
 output "cluster_ca_certificate" {
-  value = base64decode(
-    google_container_cluster.blockchain_cluster.master_auth[0].cluster_ca_certificate,
-  )
+  value = module.gcp_module.cluster_ca_certificate
 }
 
 output "name" {
-  value = google_container_cluster.blockchain_cluster.name
+  value = module.gcp_module.name
 }
 
 output "location" {
-  value = google_container_cluster.blockchain_cluster.location
+  value = module.gcp_module.location
 }
 
 output "node_locations" {
-  value = var.node_locations
+  value = module.gcp_module.node_locations
 }
 
 output "project" {
-  value = google_container_cluster.blockchain_cluster.project
+  value = module.gcp_module.project
 }
