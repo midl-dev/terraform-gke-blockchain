@@ -45,6 +45,12 @@ variable "node_locations" {
   description = "List of locations within the regions where to deploy the nodes."
 }
 
+variable "network_tier" {
+  type = string
+  default = "STANDARD"
+  description = "Google network tier. Can be STANDARD or PREMIUM"
+}
+
 variable "service_account_iam_roles" {
   type = list(string)
   default = [

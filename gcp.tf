@@ -32,6 +32,12 @@ data "google_project" "blockchain_cluster" {
   project_id = var.project != "" ? var.project : google_project.blockchain_cluster[0].project_id
 }
 
+# set default network tier
+resource "google_compute_project_default_network_tier" "default" {
+  network_tier = var.network_tier
+  project      = data.google_project.blockchain_cluster.project_id
+}
+
 # Create the blockchain_cluster service account
 resource "google_service_account" "blockchain-server" {
   account_id   = "blockchain-server"
