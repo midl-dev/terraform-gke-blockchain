@@ -27,6 +27,9 @@ spec:
           - match:
               alertname: KubePersistentVolumeFillingUp
             receiver: 'slack'
+          - match:
+              alertname: KubeStatefulSetReplicasMismatch
+            receiver: 'slack'
           - receiver: 'null'
         receivers:
         - name: 'null'
