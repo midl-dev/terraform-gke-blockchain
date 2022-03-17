@@ -1,5 +1,5 @@
 output "kubernetes_endpoint" {
-  value = google_container_cluster.blockchain_cluster.endpoint
+  value = "https://${google_container_cluster.blockchain_cluster.endpoint}"
 }
 
 output "cluster_ca_certificate" {

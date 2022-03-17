@@ -220,9 +220,6 @@ resource "google_container_cluster" "blockchain_cluster" {
 
   # Disable basic authentication and cert-based authentication.
   master_auth {
-    username = ""
-    password = ""
-
     client_certificate_config {
       issue_client_certificate = false
     }
@@ -285,12 +282,13 @@ resource "google_container_cluster" "blockchain_cluster" {
   ]
   remove_default_node_pool = true
   workload_identity_config {
-    identity_namespace = "${data.google_project.blockchain_cluster.project_id}.svc.id.goog"
+    workload_pool = "${data.google_project.blockchain_cluster.project_id}.svc.id.goog"
   }
 
   vertical_pod_autoscaling {
     enabled = true
   }
+  enable_shielded_nodes = false
 }
 
 
@@ -324,7 +322,7 @@ resource "google_container_node_pool" "blockchain_cluster_node_pool" {
     }
     preemptible  = false
     workload_metadata_config {
-      node_metadata = "GKE_METADATA_SERVER"
+      mode = "GKE_METADATA"
     }
     image_type = "COS"
     disk_type = "pd-standard"
